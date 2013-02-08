@@ -9,16 +9,6 @@
  */
 
 
-/*
- * NOTES ABOUT CUSTOM TRANSITIONS
- *
- */
-
-/*
- * TODO
- *  - Use Modernizr to detect features so we can use GPU when possible (important for mobile devices).
- */
-
 
 (function($) {
 
