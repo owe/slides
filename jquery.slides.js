@@ -33,6 +33,8 @@
 			continuous: true, 
 			index: 0,
 			onSlideChange: function() {}, 
+			onTransitionStart: function() {},
+			onTransitionEnd: function() {},
 			transition: undefined,
 			transitionOptions: {}
 		};
@@ -42,13 +44,13 @@
 
 
  		this.each(function () {
-			
+
 			var outerContainer = $(this);
  			var innerContainer = outerContainer.wrapInner('<div></div>').children();
 			var slides = innerContainer.children();
 
 			api = {
-	
+
 				// TODO: Ensure that changing animation is secure.
  	            transition: function(transition, options) {
 					opts.transition = transition;
@@ -61,13 +63,19 @@
 
 				// Triggers before a slide change occours.
  	            onSlideChange: opts.onSlideChange,
+ 	            
+ 	            // Triggers when the transitions starts.
+ 	            onTransitionStart: opts.onTransitionStart,
+ 	            
+ 	            // Triggers when the transition ends.
+ 	            onTransitionEnd: opts.onTransitionEnd,
 
 				// Gets the next index.
  				nextIndex: function() { return nextIndex(); },
 
 				// Gets the previous index.
 				prevIndex: function() { return prevIndex(); },
-				
+
 				// Sets the slide. This triggers a transition from the current slide to the slide set, unless they are the same.
  				slide: function(index) { onSlideChange(index); },
 
@@ -79,10 +87,10 @@
 
 				// Triggers a transition from the current slide to the next.
 				next: function() { if (nextIndex() !== false) onSlideChange(nextIndex()); },
-				
+
 				// Triggers a transition from the current slite to the previous.
 				prev: function() { if (prevIndex() !== false) onSlideChange(prevIndex()); }
-				
+
  	        };
 
 
@@ -115,7 +123,7 @@
  				return (index() === 0) ? slides.size() - 1 : index() - 1;
  			};
 
-			
+
 
  			// Initialize -- set the object to its default state.
  			(function() {
@@ -134,63 +142,133 @@
 					resourcesURI: opts.resourcesURI
 				});
 
- 			}());
+ 			})();
 
-			
+
+ 			// The slider is locked during a transition. This means that a new transition
+			// cannot be initiated until the previous transition is complete. Attempts 
+			// to change slide while the slider is locked are just ignored.
 			var locked = false;
+
 
  			function onSlideChange(newIndex) {
 
 				// Do nothing if a transition to the current slide is requested.
 				if (index() === newIndex) return;
 
-				// Event object.
-				var e = {
+				// Event object for onSlideChange.
+				var onSlideChangeEventObject = {
 					index: index(),
 					newIndex: newIndex
 				};
 
                 // Trigger the onSlideChange event and only do the default action if false was not returned.
-                if (!locked && api.onSlideChange(e) !== false) {
+                if (!locked && api.onSlideChange(onSlideChangeEventObject) !== false) {
 
             		if (opts.transition) {
-	
+
 						// TODO: Throw an exception if the transition does not exist.
-	
-						// Figure out whitch way the transition plays.
-						var playBackwards;
-						
-						if (api.continuous) {
-							playBackwards = (newIndex === prevIndex()) ? true : false;
-						} else {
-							playBackwards = (newIndex < index()) ? true : false;
-						}
-	
-						transitions[opts.transition].transition({
-							transitionTo: newIndex,
-							index: index(),
-							next: nextIndex(),
-							prev: prevIndex(),
-							playBackwards: playBackwards,
-							outerContainer: outerContainer,
-							innerContainer: innerContainer,
-							slides: slides
-						}, function() {
-							locked = false;
-						});
+
 
 						locked = true;
-			
+
+
+						// 
+						function updateIndex() {
+							slides.data('index', false);
+							slides.eq(newIndex).data('index', true);	
+						}
+						
+						
+
+						function transition() {
+
+							// Figure out which way the transition plays.
+							var playBackwards;
+		
+							if (api.continuous) {
+								playBackwards = (newIndex === prevIndex()) ? true : false;
+							} else {
+								playBackwards = (newIndex < index()) ? true : false;
+							}
+
+							transitions[opts.transition].transition({
+								transitionTo: newIndex,
+								index: index(),
+								next: nextIndex(),
+								prev: prevIndex(),
+								playBackwards: playBackwards,
+								outerContainer: outerContainer,
+								innerContainer: innerContainer,
+								slides: slides
+							}, function() {
+
+								var keepLocked = false;
+							
+								updateIndex();
+							
+								// Event object for onTransitionEnd.
+								var onTransitionEndEventObject = {
+									index: newIndex,
+									keepLocked: function() {
+										keepLocked = true;
+									},
+									slides: slides,
+									unlock: function() {
+										locked = false;
+									}
+								};
+							
+								
+								// Trigger onTransitionEnd and pass in its event object.
+								opts.onTransitionEnd(onTransitionEndEventObject);
+								
+								if (!keepLocked) {
+									locked = false;
+								}
+								
+							});
+							
+						
+						}
+
+
+						
+						var pauseTransition = false;
+
+						
+						// Event object for onTransitionStart.
+						var onTransitionStartEventObject = {
+							continueTransition: function() {
+								transition();
+							},
+							index: index(),
+							pauseTransition: function() {
+								pauseTransition = true;
+							},
+							slides: slides	
+						};
+						
+
+						// Trigger onTransitionStart and pass in its event object.
+						opts.onTransitionStart(onTransitionStartEventObject);
+
+
+						
+						if (!pauseTransition) {
+							transition();
+						}
+
+						
+
 					} else {
 
 						// Default behaviour.
-						slides.eq(e.newIndex).show();
-						slides.eq(e.index).hide();
-						
+						slides.eq(onSlideChangeEventObject.newIndex).show();
+						slides.eq(onSlideChangeEventObject.index).hide();
+						updateIndex();
+
 					}
-					
-					slides.data('index', false);
-					slides.eq(newIndex).data('index', true);
 
                 }
 
