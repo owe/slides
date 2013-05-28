@@ -159,7 +159,8 @@
 				// Event object for onSlideChange.
 				var onSlideChangeEventObject = {
 					index: index(),
-					newIndex: newIndex
+					newIndex: newIndex,
+					slides: slides
 				};
 
                 // Trigger the onSlideChange event and only do the default action if false was not returned.
