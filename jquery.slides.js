@@ -160,7 +160,7 @@
 				var onSlideChangeEventObject = {
 					index: index(),
 					newIndex: newIndex,
-					slides: slides
+					slides: function() { return slides; }
 				};
 
                 // Trigger the onSlideChange event and only do the default action if false was not returned.
