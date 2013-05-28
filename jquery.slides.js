@@ -78,6 +78,8 @@
 
 				// Sets the slide. This triggers a transition from the current slide to the slide set, unless they are the same.
  				slide: function(index) { onSlideChange(index); },
+ 				
+ 				slides: function() { return slides; },
 
 				// Gets the total number of slides.
  				size: function() { return slides.size(); },
